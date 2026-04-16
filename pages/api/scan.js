@@ -108,3 +108,9 @@ export default async function handler(req, res) {
         verificada: true
       } : null
     })
+
+  } catch (error) {
+    console.error('Error en /api/scan:', error)
+    return res.status(500).json({ error: 'Error interno del servidor' })
+  }
+}
