@@ -16,7 +16,7 @@ async function crearSalaDaily() {
         'Authorization': `Bearer ${process.env.DAILY_API_KEY}`
       },
       body: JSON.stringify({
-        properties: { exp: Math.floor(Date.now() / 1000) + 3600 }
+  properties: { exp: Math.floor(Date.now() / 1000) + 86400 }
       })
     })
     const data = await res.json()
