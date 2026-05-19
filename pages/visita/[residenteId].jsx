@@ -39,8 +39,7 @@ export default function VisitaPage() {
 
       {estado === 'video' && roomUrl ? (
         <iframe
-          src={roomUrl}
-          allow="camera; microphone; fullscreen; speaker; display-capture"
+src={`${roomUrl}?prejoin=false&micEnabled=true&camEnabled=true`}          allow="camera; microphone; fullscreen; speaker; display-capture"
           style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
         />
       ) : (
