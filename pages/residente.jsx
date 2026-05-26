@@ -1,14 +1,80 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/router'
 import Head from 'next/head'
+import { supabase } from '../lib/supabase'
 
 export default function PantallaResidente() {
-  const [alerta, setAlerta] = useState(true) // en demo siempre hay alerta
+  const router = useRouter()
+  const { id: residenteId } = router.query
+
+  const [alerta, setAlerta] = useState(false)
+  const [roomUrl, setRoomUrl] = useState(null)
   const [hablando, setHablando] = useState(false)
+  const canalRef = useRef(null)
+
+  useEffect(() => {
+    if (!residenteId) return
+
+    // Suscribirse a nuevas visitas para este residente
+    const canal = supabase
+      .channel(`visitas-residente-${residenteId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'visitas',
+          filter: `residente_id=eq.${residenteId}`
+        },
+        (payload) => {
+          const visita = payload.new
+          if (visita.video_url) {
+            setRoomUrl(visita.video_url)
+            setAlerta(true)
+          }
+        }
+      )
+      .subscribe()
+
+    canalRef.current = canal
+
+    return () => {
+      supabase.removeChannel(canal)
+    }
+  }, [residenteId])
 
   function llamarEmergencia() {
     if (typeof window !== 'undefined') {
       window.location.href = 'tel:911'
     }
+  }
+
+  // Cuando hay una visita activa, mostrar el video
+  if (roomUrl) {
+    return (
+      <>
+        <Head>
+          <title>Ring Rage — Visita</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+        </Head>
+        <iframe
+          src={`${roomUrl}?prejoin=false&micEnabled=true&camEnabled=true`}
+          allow="camera; microphone; fullscreen; speaker; display-capture"
+          style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+        />
+        <button
+          onClick={llamarEmergencia}
+          style={{
+            position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
+            background: '#E24B4A', color: '#fff', border: 'none', borderRadius: '12px',
+            padding: '14px 28px', fontSize: '15px', fontWeight: '700', cursor: 'pointer',
+            zIndex: 9999, boxShadow: '0 4px 20px rgba(226,75,74,0.5)'
+          }}
+        >
+          🚨 Llamar al 911
+        </button>
+      </>
+    )
   }
 
   return (
@@ -29,7 +95,6 @@ export default function PantallaResidente() {
         margin: '0 auto'
       }}>
 
-        {/* Header */}
         <div style={{ marginBottom: '24px' }}>
           <div style={{
             fontSize: '12px',
@@ -40,11 +105,15 @@ export default function PantallaResidente() {
             marginBottom: '4px'
           }}>Ring Rage</div>
           <div style={{ fontSize: '26px', fontWeight: '600', color: '#1a1a2e' }}>
-            Hay alguien en la puerta
+            Esperando visitas...
           </div>
+          {!residenteId && (
+            <div style={{ fontSize: '13px', color: '#999', marginTop: '6px' }}>
+              Abrí este link con tu ID: /residente?id=TU_ID
+            </div>
+          )}
         </div>
 
-        {/* Alerta de riesgo */}
         {alerta && (
           <div style={{
             background: '#FAEEDA',
@@ -62,13 +131,12 @@ export default function PantallaResidente() {
                 Revisá antes de abrir
               </div>
               <div style={{ fontSize: '13px', color: '#854F0B', marginTop: '2px' }}>
-                Tu familiar ya fue notificado
+                Conectando con la visita...
               </div>
             </div>
           </div>
         )}
 
-        {/* Video */}
         <div style={{
           background: '#1a1a2e',
           borderRadius: '16px',
@@ -82,72 +150,25 @@ export default function PantallaResidente() {
         }}>
           <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>
             <div style={{ fontSize: '36px', marginBottom: '8px' }}>📷</div>
-            <div style={{ fontSize: '14px' }}>Cámara de la puerta</div>
+            <div style={{ fontSize: '14px' }}>
+              {residenteId ? 'Aguardando visita...' : 'Cámara de la puerta'}
+            </div>
           </div>
-          <div style={{
-            position: 'absolute',
-            top: '10px',
-            right: '10px',
-            background: '#E24B4A',
-            borderRadius: '20px',
-            padding: '3px 10px',
-            fontSize: '11px',
-            fontWeight: '600',
-            color: '#fff'
-          }}>EN VIVO</div>
-        </div>
-
-        {/* Botones principales */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-
-          {/* Hablar */}
-          <button
-            onClick={() => setHablando(!hablando)}
-            style={{
-              background: hablando ? '#E1F5EE' : '#fff',
-              border: hablando ? '2px solid #5DCAA5' : '1px solid #e0ddd6',
-              borderRadius: '16px',
-              padding: '20px 12px',
-              cursor: 'pointer',
-              textAlign: 'center',
-              transition: 'all 0.2s'
-            }}
-          >
-            <div style={{ fontSize: '32px', marginBottom: '8px' }}>🎙️</div>
+          {residenteId && (
             <div style={{
-              fontSize: '17px',
+              position: 'absolute',
+              top: '10px',
+              right: '10px',
+              background: '#5DCAA5',
+              borderRadius: '20px',
+              padding: '3px 10px',
+              fontSize: '11px',
               fontWeight: '600',
-              color: hablando ? '#085041' : '#1a1a2e'
-            }}>
-              {hablando ? 'Hablando...' : 'Hablar'}
-            </div>
-            <div style={{ fontSize: '12px', color: '#888', marginTop: '3px' }}>
-              sin abrir
-            </div>
-          </button>
-
-          {/* Avisar al familiar */}
-          <button
-            style={{
-              background: '#fff',
-              border: '1px solid #e0ddd6',
-              borderRadius: '16px',
-              padding: '20px 12px',
-              cursor: 'pointer',
-              textAlign: 'center'
-            }}
-          >
-            <div style={{ fontSize: '32px', marginBottom: '8px' }}>📲</div>
-            <div style={{ fontSize: '17px', fontWeight: '600', color: '#1a1a2e' }}>
-              Avisar
-            </div>
-            <div style={{ fontSize: '12px', color: '#888', marginTop: '3px' }}>
-              a mi familia
-            </div>
-          </button>
+              color: '#fff'
+            }}>CONECTADO</div>
+          )}
         </div>
 
-        {/* Botón emergencia */}
         <button
           onClick={llamarEmergencia}
           style={{
