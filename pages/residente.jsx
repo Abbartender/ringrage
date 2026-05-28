@@ -425,9 +425,38 @@ export default function PantallaResidente() {
               <div ref={chatBottomRef} />
             </div>
 
+            {/* 3 botones permanentes en el chat */}
+            <div style={{
+              display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px',
+              padding: '10px 16px', borderTop: '1px solid rgba(255,255,255,0.08)'
+            }}>
+              <BtnIcono
+                icon="📞"
+                label="Familiar"
+                onClick={() => contacto?.telefono && (window.location.href = `tel:${contacto.telefono}`)}
+                color="#0d2318"
+                border="rgba(93,202,165,0.35)"
+              />
+              <BtnIcono
+                icon={enLlamada ? '📵' : '🎥'}
+                label={enLlamada ? 'Cortar' : 'Atender'}
+                onClick={enLlamada ? cortar : atender}
+                color={enLlamada ? '#2a0d0d' : '#0d1a2a'}
+                border={enLlamada ? '#E24B4A' : '#5DCAA5'}
+              />
+              <BtnIcono
+                icon="🚨"
+                label="911"
+                onClick={() => setMostrarConfirm911(true)}
+                color="#2a0d0d"
+                border="#E24B4A"
+                labelColor="#E24B4A"
+              />
+            </div>
+
             {/* Input */}
             <div style={{
-              padding: '12px 16px 28px', borderTop: '1px solid rgba(255,255,255,0.08)',
+              padding: '10px 16px 28px',
               display: 'flex', gap: '10px', alignItems: 'flex-end'
             }}>
               <textarea
