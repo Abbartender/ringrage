@@ -29,7 +29,7 @@ export default async function handler(req, res) {
 
   try {
     const response = await client.messages.create({
-      model: 'claude-opus-4-5',
+      model: 'claude-3-5-haiku-20241022',
       max_tokens: 200,
       system: MARIO_SYSTEM,
       messages: mensajes
