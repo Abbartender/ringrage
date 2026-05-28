@@ -34,6 +34,27 @@ export default function PantallaResidente() {
       })
   }, [residenteId])
 
+  // Al abrir el link desde WhatsApp, el evento Realtime ya pasó.
+  // Buscamos la visita más reciente (últimos 30 min) para mostrar Mario de inmediato.
+  useEffect(() => {
+    if (!residenteId) return
+    const hace30min = new Date(Date.now() - 30 * 60 * 1000).toISOString()
+    supabase
+      .from('visitas')
+      .select('video_url, timestamp')
+      .eq('residente_id', residenteId)
+      .gte('timestamp', hace30min)
+      .order('timestamp', { ascending: false })
+      .limit(1)
+      .single()
+      .then(({ data }) => {
+        if (data?.video_url) {
+          setRoomUrl(data.video_url)
+          setMarioEstado('esperando')
+        }
+      })
+  }, [residenteId])
+
   // Suscribirse a nuevas visitas via Supabase Realtime
   useEffect(() => {
     if (!residenteId) return

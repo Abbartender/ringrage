@@ -70,7 +70,8 @@ export default async function handler(req, res) {
       empresa,
       riesgo,
       videoUrl: roomUrl,
-      residenteNombre: residente.nombre
+      residenteNombre: residente.nombre,
+      residenteId
     })
 
     if (twilioHabilitado) {
