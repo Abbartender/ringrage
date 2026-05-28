@@ -1,7 +1,3 @@
-import Anthropic from '@anthropic-ai/sdk'
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
 const MARIO_SYSTEM = `Sos Mario, el asistente de seguridad de Ring Rage para adultos mayores.
 Tu misión: acompañar y proteger, nunca alarmar.
 
@@ -15,9 +11,7 @@ TU TONO:
 - Cálido y tranquilo, como un vecino de confianza
 - Frases cortas y simples, sin tecnicismos
 - Nunca dramático ni alarmista
-- Máximo 2-3 oraciones por respuesta
-
-Si te preguntan algo que no tiene que ver con la seguridad de la puerta, respondés amablemente y volvés al tema de seguridad.`
+- Máximo 2-3 oraciones por respuesta`
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
@@ -28,14 +22,31 @@ export default async function handler(req, res) {
   }
 
   try {
-    const response = await client.messages.create({
-      model: 'claude-3-5-haiku-20241022',
-      max_tokens: 200,
-      system: MARIO_SYSTEM,
-      messages: mensajes
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 200,
+        system: MARIO_SYSTEM,
+        messages: mensajes
+      })
     })
 
-    return res.status(200).json({ respuesta: response.content[0].text })
+    const data = await response.json()
+
+    if (!response.ok) {
+      console.error('Anthropic error:', data)
+      return res.status(500).json({ error: data?.error?.message || 'Error de Anthropic' })
+    }
+
+    const texto = data?.content?.[0]?.text || ''
+    return res.status(200).json({ respuesta: texto })
+
   } catch (error) {
     console.error('Mario chat error:', error)
     return res.status(500).json({ error: 'Error al conectar con Mario' })
