@@ -16,7 +16,12 @@ export default function PantallaResidente() {
   const [marioEstado, setMarioEstado] = useState('idle')
   const [post1Resp, setPost1Resp] = useState(null)
   const [mostrarConfirm911, setMostrarConfirm911] = useState(false)
+  const [chatMode, setChatMode] = useState(false)
+  const [mensajesChat, setMensajesChat] = useState([])
+  const [inputChat, setInputChat] = useState('')
+  const [cargandoChat, setCargandoChat] = useState(false)
   const marioTimerRef = useRef(null)
+  const chatBottomRef = useRef(null)
 
   // Cargar datos del residente y su contacto principal
   useEffect(() => {
@@ -112,6 +117,31 @@ export default function PantallaResidente() {
   function llamar911() {
     setMostrarConfirm911(false)
     window.location.href = 'tel:911'
+  }
+
+  async function enviarMensajeChat() {
+    const texto = inputChat.trim()
+    if (!texto || cargandoChat) return
+
+    const nuevosMensajes = [...mensajesChat, { role: 'user', content: texto }]
+    setMensajesChat(nuevosMensajes)
+    setInputChat('')
+    setCargandoChat(true)
+
+    try {
+      const res = await fetch('/api/mario-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mensajes: nuevosMensajes })
+      })
+      const data = await res.json()
+      setMensajesChat(prev => [...prev, { role: 'assistant', content: data.respuesta }])
+    } catch {
+      setMensajesChat(prev => [...prev, { role: 'assistant', content: 'Perdón, no pude responder. Intentá de nuevo.' }])
+    } finally {
+      setCargandoChat(false)
+      setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+    }
   }
 
   const marioTextos = {
@@ -255,9 +285,17 @@ export default function PantallaResidente() {
                 </div>
               )}
               {(marioEstado === 'cierreOk' || marioEstado === 'cierreNo') && (
-                <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', textAlign: 'center', marginTop: '4px' }}>
-                  Sesión cerrada
-                </div>
+                <button
+                  onClick={() => setChatMode(true)}
+                  style={{
+                    width: '100%', padding: '13px', marginTop: '4px',
+                    background: 'rgba(255,255,255,0.07)',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: '12px', color: 'rgba(255,255,255,0.7)',
+                    fontSize: '15px', cursor: 'pointer'
+                  }}>
+                  💬 Seguir hablando con Mario
+                </button>
               )}
             </div>
           )}
@@ -318,6 +356,109 @@ export default function PantallaResidente() {
             </div>
           )}
         </div>
+
+        {/* Pantalla de chat con Mario */}
+        {chatMode && (
+          <div style={{
+            position: 'fixed', inset: 0, background: '#0f0f1a',
+            zIndex: 50, display: 'flex', flexDirection: 'column'
+          }}>
+            {/* Header del chat */}
+            <div style={{
+              padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)',
+              display: 'flex', alignItems: 'center', gap: '12px'
+            }}>
+              <button onClick={() => setChatMode(false)} style={{
+                background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)',
+                fontSize: '22px', cursor: 'pointer', padding: '0 8px 0 0'
+              }}>←</button>
+              <div style={{
+                width: '36px', height: '36px', borderRadius: '50%',
+                background: '#E24B4A', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', fontSize: '18px', flexShrink: 0
+              }}>🤖</div>
+              <div>
+                <div style={{ color: '#fff', fontWeight: '600', fontSize: '15px' }}>Mario</div>
+                <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>Asistente de seguridad</div>
+              </div>
+            </div>
+
+            {/* Mensajes */}
+            <div style={{
+              flex: 1, overflowY: 'auto', padding: '20px 16px',
+              display: 'flex', flexDirection: 'column', gap: '12px'
+            }}>
+              {mensajesChat.length === 0 && (
+                <div style={{
+                  background: '#1a1a2e', borderRadius: '16px 16px 16px 4px',
+                  padding: '14px 16px', maxWidth: '85%', alignSelf: 'flex-start'
+                }}>
+                  <div style={{ fontSize: '17px', color: '#fff', lineHeight: '1.4' }}>
+                    ¿Tenés alguna duda sobre lo que pasó? Preguntame lo que quieras. 😊
+                  </div>
+                </div>
+              )}
+              {mensajesChat.map((msg, i) => (
+                <div key={i} style={{
+                  alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                  maxWidth: '85%'
+                }}>
+                  <div style={{
+                    background: msg.role === 'user' ? '#E24B4A' : '#1a1a2e',
+                    borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                    padding: '12px 16px'
+                  }}>
+                    <div style={{ fontSize: '17px', color: '#fff', lineHeight: '1.4' }}>
+                      {msg.content}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {cargandoChat && (
+                <div style={{
+                  background: '#1a1a2e', borderRadius: '16px 16px 16px 4px',
+                  padding: '14px 16px', maxWidth: '85%', alignSelf: 'flex-start'
+                }}>
+                  <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '20px' }}>...</div>
+                </div>
+              )}
+              <div ref={chatBottomRef} />
+            </div>
+
+            {/* Input */}
+            <div style={{
+              padding: '12px 16px 28px', borderTop: '1px solid rgba(255,255,255,0.08)',
+              display: 'flex', gap: '10px', alignItems: 'flex-end'
+            }}>
+              <textarea
+                value={inputChat}
+                onChange={e => setInputChat(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarMensajeChat() } }}
+                placeholder="Escribí tu pregunta..."
+                rows={1}
+                style={{
+                  flex: 1, background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.12)',
+                  borderRadius: '12px', padding: '12px 14px', color: '#fff',
+                  fontSize: '16px', resize: 'none', outline: 'none',
+                  fontFamily: 'system-ui', lineHeight: '1.4'
+                }}
+              />
+              <button
+                onClick={enviarMensajeChat}
+                disabled={!inputChat.trim() || cargandoChat}
+                style={{
+                  width: '46px', height: '46px', borderRadius: '12px',
+                  background: inputChat.trim() ? '#E24B4A' : 'rgba(255,255,255,0.08)',
+                  border: 'none', color: '#fff', fontSize: '20px',
+                  cursor: inputChat.trim() ? 'pointer' : 'default',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                ↑
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Modal confirmación 911 */}
         {mostrarConfirm911 && (
